@@ -28,7 +28,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onUseLocation, suggesti
             setInput(v);
             onInputChange && onInputChange(v);
           }}
-          placeholder="Search city..."
+          placeholder="Search..."
         />
         {suggestions.length > 0 && (
           <div

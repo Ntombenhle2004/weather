@@ -1,7 +1,10 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import SearchBar from "../components/SearchBar";
+import ThemeToggle from "../components/ThemeToggle";
+import CurrentWeatherCard from "../components/CurrentWeatherCard";
+import SavedLocations from "../components/SavedLocations";
+import WeatherAlerts from "../components/WeatherAlerts";
 
-// 1-decimal precision for better fidelity with API values
 const cToF = (c: number) => Math.round(((c * 9) / 5 + 32) * 10) / 10;
 const round = (n: number) => Math.round(n * 10) / 10;
 
@@ -33,23 +36,46 @@ const Home: React.FC = () => {
   const [saved, setSaved] = useState<HistoryItem[]>([]);
   const [suggestions, setSuggestions] = useState<Array<{ name: string; state?: string; country?: string; lat: number; lon: number }>>([]);
 
+  const hasAutoRequested = useRef(false);
+
   const API_KEY = (import.meta as any).env?.VITE_OPENWEATHER_API_KEY as string | undefined;
 
-  // Reverse geocode helper to get the nearest city/state for coordinates
-  const reverseGeocodeNearest = async (
+  const reverseGeocodeOSM = async (
     lat: number,
     lon: number
   ): Promise<{ name: string; country: string } | null> => {
     try {
+      const url = `https://nominatim.openstreetmap.org/reverse?format=jsonv2&lat=${lat}&lon=${lon}&zoom=14&addressdetails=1`;
+      const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+      if (!res.ok) return null;
+      const data = await res.json();
+      const addr = data?.address || {};
+      // Exclude municipality to avoid labels like 'Msunduzi Local Municipality'.
+      // Prefer city/town, then suburb, then village/hamlet.
+      const city = addr.city || addr.town || addr.suburb || addr.village || addr.hamlet;
+      const country = addr.country_code ? String(addr.country_code).toUpperCase() : (addr.country || "");
+      const name = city || data?.name || "Your location";
+      return { name, country };
+    } catch {
+      return null;
+    }
+  };
+
+  const reverseGeocodeNearest = async (
+    lat: number,
+    lon: number,
+    preferName?: string
+  ): Promise<{ name: string; country: string } | null> => {
+    try {
       if (!API_KEY) return null;
       const r = await fetch(
-        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=5&appid=${API_KEY}`
+        `https://api.openweathermap.org/geo/1.0/reverse?lat=${lat}&lon=${lon}&limit=10&appid=${API_KEY}`
       );
       const arr = await r.json();
       if (!Array.isArray(arr) || arr.length === 0) return null;
       const toRad = (x: number) => (x * Math.PI) / 180;
       const haversine = (la1: number, lo1: number, la2: number, lo2: number) => {
-        const R = 6371000; // meters
+        const R = 6371000;
         const dLat = toRad(la2 - la1);
         const dLon = toRad(lo2 - lo1);
         const a = Math.sin(dLat / 2) ** 2 + Math.cos(toRad(la1)) * Math.cos(toRad(la2)) * Math.sin(dLon / 2) ** 2;
@@ -57,18 +83,19 @@ const Home: React.FC = () => {
         return R * c;
       };
       let best = arr[0];
-      let bestDist = Infinity;
+      if (preferName) {
+        const match = arr.find((loc: any) => String(loc.name).toLowerCase() === String(preferName).toLowerCase());
+        if (match) best = match;
+      }
+      if (!best) best = arr[0];
+      let bestDist = haversine(lat, lon, best.lat, best.lon);
       for (const loc of arr) {
         const d = haversine(lat, lon, loc.lat, loc.lon);
-        if (d < bestDist) {
-          best = loc;
-          bestDist = d;
-        }
+        if (d < bestDist) { best = loc; bestDist = d; }
       }
       const name = best.name ? String(best.name) : "Your location";
-      const state = best.state ? String(best.state) : "";
       const country = best.country ? String(best.country) : "";
-      const label = state ? `${name}, ${state}` : name;
+      const label = name;
       return { name: label, country };
     } catch {
       return null;
@@ -80,7 +107,6 @@ const Home: React.FC = () => {
     if (stored) setHistory(JSON.parse(stored));
     const savedStored = localStorage.getItem("weather-saved");
     if (savedStored) setSaved(JSON.parse(savedStored));
-    // Apply initial theme to document
     document.documentElement.classList.toggle("dark-theme", theme === "dark");
     document.documentElement.classList.toggle("light-theme", theme === "light");
 
@@ -95,7 +121,12 @@ const Home: React.FC = () => {
     };
   }, []);
 
-  // Keep document class and localStorage in sync when theme changes
+  useEffect(() => {
+    if (hasAutoRequested.current) return;
+    hasAutoRequested.current = true;
+    handleUseLocation();
+  }, []);
+
   useEffect(() => {
     localStorage.setItem("weather-theme", theme);
     document.documentElement.classList.toggle("dark-theme", theme === "dark");
@@ -138,41 +169,43 @@ const Home: React.FC = () => {
 
   const fetchWeatherByCoords = async (
     latitude: number,
-    longitude: number
+    longitude: number,
+    opts?: { labelName?: string; labelCountry?: string }
   ) => {
     setLoading(true);
     try {
       if (!isOnline) throw new Error("Offline: can't fetch live data");
       if (!API_KEY) throw new Error("Missing OpenWeather API key. Set VITE_OPENWEATHER_API_KEY.");
 
-      // Reduce small GPS jitter by snapping to ~100m precision
-      const lat = Math.round(latitude * 1000) / 1000;
-      const lon = Math.round(longitude * 1000) / 1000;
+      const latSnap = Math.round(latitude * 1000) / 1000;
+      const lonSnap = Math.round(longitude * 1000) / 1000;
 
       const currentRes = await fetch(
-        `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`
+        `https://api.openweathermap.org/data/2.5/weather?lat=${latSnap}&lon=${lonSnap}&units=metric&appid=${API_KEY}`
       );
       const current = await currentRes.json();
       if (!current || !current.main) throw new Error("No weather data returned");
 
-      const humidity = typeof current.main.humidity === "number" ? current.main.humidity : null; // %
-      const windKmh = typeof current.wind?.speed === "number" ? round(current.wind.speed * 3.6) : null; // m/s -> km/h (1-decimal)
+      const humidity = typeof current.main.humidity === "number" ? current.main.humidity : null;
+      const windKmh = typeof current.wind?.speed === "number" ? round(current.wind.speed * 3.6) : null;
  
-      // Phase 1: Strictly prefer reverse geocoded label for precision; fall back to API label only if needed
-      let finalName: string = "Your location";
-      let finalCountry: string = "";
-      try {
-        const best = await reverseGeocodeNearest(lat, lon);
-        if (best) {
-          finalName = best.name || finalName;
-          finalCountry = best.country || finalCountry;
-        } else {
-          finalName = (current.name && String(current.name)) || finalName;
-          finalCountry = (current.sys && current.sys.country && String(current.sys.country)) || finalCountry;
-        }
-      } catch {
-        finalName = (current.name && String(current.name)) || finalName;
+      let finalName: string = (opts?.labelName && String(opts.labelName)) || "";
+      let finalCountry: string = (opts?.labelCountry && String(opts.labelCountry)) || "";
+      if (!finalName) {
+        try {
+          const osm = await reverseGeocodeOSM(latitude, longitude);
+          if (osm) { finalName = osm.name; finalCountry = osm.country || finalCountry; }
+        } catch {}
+      }
+      if (!finalName) {
+        finalName = (current.name && String(current.name)) || "Your location";
         finalCountry = (current.sys && current.sys.country && String(current.sys.country)) || finalCountry;
+      }
+      if (!finalName) {
+        try {
+          const bestOW = await reverseGeocodeNearest(latitude, longitude);
+          if (bestOW) { finalName = bestOW.name; finalCountry = bestOW.country || finalCountry; }
+        } catch {}
       }
 
       const entry: HistoryItem = {
@@ -186,17 +219,15 @@ const Home: React.FC = () => {
 
       setWeather(entry);
       saveHistory(entry);
-      // No caching of labels to avoid stale/wrong names across refreshes.
       const weatherMsg = current.weather?.[0]?.description
         ? `${current.weather[0].description} in ${finalName}`
         : `Weather for ${finalName} loaded`;
       setNotification({ message: weatherMsg, type: "success" });
 
-      // Phase 2a (background): fetch forecast and update when ready
       (async () => {
         try {
           const fcRes = await fetch(
-            `https://api.openweathermap.org/data/2.5/forecast?lat=${lat}&lon=${lon}&units=metric&appid=${API_KEY}`
+            `https://api.openweathermap.org/data/2.5/forecast?lat=${latSnap}&lon=${lonSnap}&units=metric&appid=${API_KEY}`
           );
           const fc = await fcRes.json();
           const hourlyArr: any[] = Array.isArray(fc?.list)
@@ -235,8 +266,6 @@ const Home: React.FC = () => {
         } catch (_) {}
       })();
 
-      // Keep the initial label stable to avoid confusion. If you want refinement, we can re-enable it.
-
     } catch (e: any) {
       setNotification({ message: e.message || "Error fetching weather", type: "error" });
     } finally {
@@ -254,8 +283,24 @@ const Home: React.FC = () => {
       const geoRes = await fetch(url);
       const results = await geoRes.json();
       if (!Array.isArray(results) || results.length === 0) throw new Error("Location not found");
-      const pick = results[0];
-      await fetchWeatherByCoords(pick.lat, pick.lon);
+      const q = query.trim().toLowerCase();
+      const exact = results.find((r: any) => String(r.name || "").toLowerCase() === q);
+      if (exact) {
+        await fetchWeatherByCoords(exact.lat, exact.lon, { labelName: String(exact.name || ""), labelCountry: String(exact.country || "") });
+      } else if (results.length === 1) {
+        const only = results[0];
+        await fetchWeatherByCoords(only.lat, only.lon, { labelName: String(only.name || ""), labelCountry: String(only.country || "") });
+      } else {
+        const mapped = results.map((r: any) => ({
+          name: r.name as string,
+          state: r.state as string | undefined,
+          country: r.country as string | undefined,
+          lat: r.lat as number,
+          lon: r.lon as number,
+        }));
+        setSuggestions(mapped);
+        setNotification({ message: "Multiple matches found. Please pick one from the list.", type: "info" });
+      }
     } catch (e: any) {
       setNotification({ message: e.message || "Error searching for location", type: "error" });
     } finally {
@@ -263,11 +308,10 @@ const Home: React.FC = () => {
     }
   };
 
-  // Input change handler to populate suggestions (villages supported)
   const handleInputChange = async (q: string) => {
     setSuggestions([]);
     const query = q.trim();
-    if (query.length < 2) return; // avoid noisy requests
+    if (query.length < 2) return;
     try {
       if (!API_KEY || !isOnline) return;
       const url = `https://api.openweathermap.org/geo/1.0/direct?q=${encodeURIComponent(query)}&limit=10&appid=${API_KEY}`;
@@ -283,14 +327,28 @@ const Home: React.FC = () => {
         }));
         setSuggestions(mapped);
       }
-    } catch (_) {
-      // ignore suggestion errors
-    }
+    } catch (_) {}
   };
 
   const handlePickSuggestion = async (s: { name: string; state?: string; country?: string; lat: number; lon: number }) => {
     setSuggestions([]);
-    await fetchWeatherByCoords(s.lat, s.lon);
+    await fetchWeatherByCoords(s.lat, s.lon, { labelName: s.name, labelCountry: s.country });
+  };
+  const getBestPosition = async (): Promise<GeolocationPosition> => {
+    const hiOpts: PositionOptions = { enableHighAccuracy: true, timeout: 10000, maximumAge: 0 };
+    const loOpts: PositionOptions = { enableHighAccuracy: false, timeout: 15000, maximumAge: 0 };
+
+    try {
+      const p = await new Promise<GeolocationPosition>((resolve, reject) => {
+        navigator.geolocation.getCurrentPosition(resolve, reject, hiOpts);
+      });
+      return p;
+    } catch {}
+
+    const fallback = await new Promise<GeolocationPosition>((resolve, reject) => {
+      navigator.geolocation.getCurrentPosition(resolve, reject, loOpts);
+    });
+    return fallback;
   };
 
   const handleUseLocation = async () => {
@@ -307,23 +365,20 @@ const Home: React.FC = () => {
       return;
     }
     setLoading(true);
-
-    // Use a single, faster position request with reasonable timeout and cached locations
-    const getPosition = (): Promise<GeolocationPosition> => {
-      const opts: PositionOptions = { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 };
-      return new Promise((resolve, reject) => {
-        navigator.geolocation.getCurrentPosition(resolve, reject, opts);
-      });
-    };
-
     try {
-      const pos = await getPosition();
-      const { latitude, longitude } = pos.coords;
-      // Fetch weather directly for these coordinates; label will come from the weather API itself
-      await fetchWeatherByCoords(latitude, longitude);
-      if (typeof pos.coords.accuracy === "number" && pos.coords.accuracy > 150) {
-        setNotification({ message: `Location may be approximate (±${Math.round(pos.coords.accuracy)}m).`, type: "info" });
+      const pos = await getBestPosition();
+      const { latitude, longitude, accuracy } = pos.coords as any;
+
+      // Always fetch, but warn if accuracy is poor
+      if (typeof accuracy === "number") {
+        if (accuracy > 5000) {
+          setNotification({ message: `Your location might be off by about ${Math.round(accuracy)} meters.`, type: "info" });
+        } else if (accuracy > 1000) {
+          setNotification({ message: `Your location might be off by about ${Math.round(accuracy)} meters.`, type: "info" });
+        }
       }
+
+      await fetchWeatherByCoords(latitude, longitude);
     } catch (err: any) {
       setNotification({ message: err?.message || "Unable to access your location.", type: "error" });
     } finally {
@@ -351,10 +406,10 @@ const Home: React.FC = () => {
   return (
     <div className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}>
       <div className="app-frame">
-        {/* Header bar styled like mock */}
         <div className="header">
           <div className="header-center">
             <div style={{ width: "100%" }}>
+              <div className="section-title" style={{ marginBottom: 8 }}>Weather application</div>
               <SearchBar
                 onSearch={handleSearch}
                 onUseLocation={handleUseLocation}
@@ -365,8 +420,7 @@ const Home: React.FC = () => {
             </div>
           </div>
           <div className="controls">
-            <button className={`toggle-pill ${theme === "light" ? "active" : ""}`} onClick={() => toggleTheme("light")} aria-label="Light theme">Light</button>
-            <button className={`toggle-pill ${theme === "dark" ? "active" : ""}`} onClick={() => toggleTheme("dark")} aria-label="Dark theme">Dark</button>
+            <ThemeToggle theme={theme} onToggle={toggleTheme} />
             <button className={`toggle-pill ${unit === "celsius" ? "active" : ""}`} onClick={() => toggleUnit("celsius")}>°C</button>
             <button className={`toggle-pill ${unit === "fahrenheit" ? "active" : ""}`} onClick={() => toggleUnit("fahrenheit")}>°F</button>
           </div>
@@ -378,35 +432,15 @@ const Home: React.FC = () => {
           </div>
         )}
 
-        {/* Hero full width */}
         <div style={{ marginTop: 14 }}>
           <div className="main-card">
             {loading && <div style={{ fontWeight: 600, marginBottom: 8 }}>Loading…</div>}
-            {/* Placeholder removed as requested */}
-
             {weather && (
-              <div className="current-row hero">
-                <div className="current-left">
-                  <div className="city" style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                    <span>📍 {weather.city}{weather.country ? `, ${weather.country}` : ""}</span>
-                  </div>
-                  <div>
-                    <button className="toggle-pill" onClick={addCurrentToSaved} title="Save to Saved Locations" aria-label="Save to Saved Locations">+ Save</button>
-                  </div>
-                  <p className="big-temp">
-                    {unit === "celsius" ? `${weather.tempC}°C` : `${cToF(weather.tempC)}°F`}
-                  </p>
-                  <div className="kv">
-                    <div>💧 {weather.humidity ?? "-"}%</div>
-                    <div>🌬 {weather.wind ?? "-"} km/h</div>
-                  </div>
-                </div>
-              </div>
+              <CurrentWeatherCard weather={weather} unit={unit} onSave={addCurrentToSaved} />
             )}
           </div>
         </div>
 
-        {/* Grid below hero: forecast left, sidebar right */}
         <div style={{ marginTop: 14 }} className="layout">
           <div className="main-card">
             <div style={{ fontWeight: 700, marginTop: 0, marginBottom: 8 }}>Weather Forecast</div>
@@ -467,36 +501,9 @@ const Home: React.FC = () => {
               </div>
             )}
           </div>
-
           <aside className="sidebar">
-            <div className="side-card">
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Saved Locations</div>
-              {saved.length === 0 && <div style={{ color: "#6b7280" }}>No saved locations yet</div>}
-              {saved.map((h, idx) => (
-                <div key={idx} className="saved-card" style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
-                  <div>
-                    <div className="city-small">{h.city}</div>
-                    <div className="country-small">{h.country}</div>
-                  </div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
-                    <div style={{ textAlign: "right" }}>
-                      <div className="temp-small">{unit === "celsius" ? `${h.tempC}°C` : `${cToF(h.tempC)}°F`}</div>
-                      <div style={{ fontSize: 12, color: "#6b7280" }}>{h.humidity ?? "-"}%</div>
-                    </div>
-                    <button className="toggle-pill" onClick={() => removeFromSaved(h)} aria-label={`Remove ${h.city}`} title="Remove">
-                      Clear
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="side-card" style={{ marginTop: 12 }}>
-              <div style={{ fontWeight: 700, marginBottom: 8 }}>Weather Alerts</div>
-              <div className={`alert-box${notification && notification.type === "error" ? " error" : ""}`}>
-                {notification ? notification.message : "No weather alerts for your locations"}
-              </div>
-            </div>
+            <SavedLocations saved={saved} unit={unit} onRemove={removeFromSaved} />
+            <WeatherAlerts message={notification ? notification.message : null} type={notification?.type} />
           </aside>
         </div>
       </div>
@@ -505,3 +512,5 @@ const Home: React.FC = () => {
 };
 
 export default Home;
+
+
