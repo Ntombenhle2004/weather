@@ -50,8 +50,6 @@ const Home: React.FC = () => {
       if (!res.ok) return null;
       const data = await res.json();
       const addr = data?.address || {};
-      // Exclude municipality to avoid labels like 'Msunduzi Local Municipality'.
-      // Prefer city/town, then suburb, then village/hamlet.
       const city = addr.city || addr.town || addr.suburb || addr.village || addr.hamlet;
       const country = addr.country_code ? String(addr.country_code).toUpperCase() : (addr.country || "");
       const name = city || data?.name || "Your location";
@@ -368,8 +366,6 @@ const Home: React.FC = () => {
     try {
       const pos = await getBestPosition();
       const { latitude, longitude, accuracy } = pos.coords as any;
-
-      // Always fetch, but warn if accuracy is poor
       if (typeof accuracy === "number") {
         if (accuracy > 5000) {
           setNotification({ message: `Your location might be off by about ${Math.round(accuracy)} meters.`, type: "info" });

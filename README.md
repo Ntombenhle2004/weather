@@ -1,73 +1,131 @@
-# React + TypeScript + Vite
+# 🌦️ Weather Application (React + Vite + TypeScript)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A modern weather application built with **React 19**, **Vite**, and **TypeScript**.  
+It fetches real-time weather data using the **OpenWeather API**, supports **geolocation**, **unit toggling (°C/°F)**, **theme switching (Light/Dark)**, and allows saving favorite locations.  
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+## 🚀 Features
 
-## React Compiler
+- 🔍 **Search by city name** with live suggestions.
+- 📍 **Use current location** via browser geolocation.
+- 🌡️ **Current weather card** (temperature, humidity, wind).
+- 📊 **Forecasts**:
+  - Daily (10-day max/min temperatures & precipitation).
+  - Hourly (24-hour temperature, humidity, wind).
+- 💾 **History tracking** (last 10 searches stored locally).
+- ⭐ **Save & remove favorite locations** (persisted in localStorage).
+- 🎨 **Theme toggle**: Light / Dark mode.
+- 🌍 **Unit toggle**: Celsius / Fahrenheit.
+- ⚡ **Offline support**: cached history & saved data available when offline.
+- 🔔 **Notifications & alerts** for success, errors, and info.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🛠️ Tech Stack
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+- **React 19** (functional components + hooks)
+- **TypeScript**
+- **Vite** (dev/build tool)
+- **React Router v7**
+- **LocalStorage** (for persistence)
+- **OpenWeather API**
+- **OpenStreetMap Nominatim** (reverse geocoding)
 
-```js
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+---
 
-      // Remove tseslint.configs.recommended and replace with this
-      tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      tseslint.configs.stylisticTypeChecked,
+## 📦 Dependencies
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+Main libraries:
+
+- `react` ^19.1.1
+- `react-dom` ^19.1.1
+- `react-router-dom` ^7.9.3
+
+Dev tools:
+
+- `vite` ^7.1.7
+- `typescript` ~5.8.3
+- `@vitejs/plugin-react` ^5.0.3
+- `eslint` ^9.36.0
+- `typescript-eslint` ^8.44.0
+
+---
+
+<!-- ## 🔑 API Key Setup
+
+This project requires an **OpenWeather API key**.  
+
+1. Go to [OpenWeather](https://openweathermap.org/api) and sign up.
+2. Create a `.env` file in the project root: -->
+
+   ```bash
+   VITE_OPENWEATHER_API_KEY=your_api_key_here
+   ```
+
+3. Restart the dev server after adding the key.
+
+---
+
+## ▶️ Running the Project
+
+Clone and install dependencies:
+
+```bash
+git clone https://github.com/Ntombenhle2004/weather.git
+cd weather-app
+npm install
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+Run development server:
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
-
-export default defineConfig([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+```bash
+npm run dev
 ```
+
+Build for production:
+
+```bash
+npm run build
+```
+
+Preview production build:
+
+```bash
+npm run preview
+```
+
+---
+
+## 📂 Project Structure
+
+```
+src/
+ ├── components/
+ │    ├── SearchBar.tsx
+ │    ├── ThemeToggle.tsx
+ │    ├── CurrentWeatherCard.tsx
+ │    ├── SavedLocations.tsx
+ │    └── WeatherAlerts.tsx
+ ├── pages/
+ │    └── Home.tsx        # Main app page
+ ├── App.tsx              # Router setup
+ ├── main.tsx             # Entry point
+ └── index.css / App.css  # Styles
+```
+
+---
+
+## Geolocation & Reverse Geocoding
+
+- Uses `navigator.geolocation` API to get coordinates.
+- Falls back between **OpenStreetMap Nominatim** and **OpenWeather Geo API** to resolve city/country.
+
+---
+
+
+
+## 📝 License
+
+MIT License © 2025 — Built for learning & demo purposes.
+
