@@ -1,3 +1,5 @@
+<img src="https://socialify.git.ci/Ntombenhle2004/weather/image?language=1&owner=1&name=1&stargazers=1&theme=Light" alt="weather" width="640" height="320" />
+
 # 🌦️ Weather Application (React + Vite + TypeScript)
 
 A modern weather application built with **React 19**, **Vite**, and **TypeScript**.  
