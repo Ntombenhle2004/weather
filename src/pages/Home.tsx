@@ -390,9 +390,10 @@ const Home: React.FC = () => {
     setUnit(u);
     setNotification({ message: u === "celsius" ? "Switched to Celsius" : "Switched to Fahrenheit", type: "info" });
   };
-  const handleSelectHistory = (city: string) => {
-    handleSearch(city);
-  };
+  
+  // const handleSelectHistory = (city: string) => {
+  //   handleSearch(city);
+  // };
 
   const displayTemp = (tempC: number | null | undefined) => {
     if (tempC === null || tempC === undefined) return "-";
