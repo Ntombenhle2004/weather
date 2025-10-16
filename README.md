@@ -1,28 +1,30 @@
-# 🌦️ Weather Application (React + Vite + TypeScript)
+<img src="https://socialify.git.ci/Ntombenhle2004/weather/image?language=1&owner=1&name=1&stargazers=1&theme=Light" alt="weather" width="640" height="320" />
+
+# Weather Application (React + Vite + TypeScript)
 
 A modern weather application built with **React 19**, **Vite**, and **TypeScript**.  
 It fetches real-time weather data using the **OpenWeather API**, supports **geolocation**, **unit toggling (°C/°F)**, **theme switching (Light/Dark)**, and allows saving favorite locations.  
 
 ---
 
-## 🚀 Features
+##  Features
 
-- 🔍 **Search by city name** with live suggestions.
-- 📍 **Use current location** via browser geolocation.
-- 🌡️ **Current weather card** (temperature, humidity, wind).
-- 📊 **Forecasts**:
+- **Search by city name** with live suggestions.
+-  **Use current location** via browser geolocation.
+-  **Current weather card** (temperature, humidity, wind).
+-  **Forecasts**:
   - Daily (10-day max/min temperatures & precipitation).
   - Hourly (24-hour temperature, humidity, wind).
-- 💾 **History tracking** (last 10 searches stored locally).
-- ⭐ **Save & remove favorite locations** (persisted in localStorage).
-- 🎨 **Theme toggle**: Light / Dark mode.
-- 🌍 **Unit toggle**: Celsius / Fahrenheit.
-- ⚡ **Offline support**: cached history & saved data available when offline.
-- 🔔 **Notifications & alerts** for success, errors, and info.
+-  **History tracking** (last 10 searches stored locally).
+-  **Save & remove favorite locations** (persisted in localStorage).
+- **Theme toggle**: Light / Dark mode.
+-  **Unit toggle**: Celsius / Fahrenheit.
+-  **Offline support**: cached history & saved data available when offline.
+-  **Notifications & alerts** for success, errors, and info.
 
 ---
 
-## 🛠️ Tech Stack
+## Tech Stack
 
 - **React 19** (functional components + hooks)
 - **TypeScript**
@@ -34,7 +36,7 @@ It fetches real-time weather data using the **OpenWeather API**, supports **geol
 
 ---
 
-## 📦 Dependencies
+## Dependencies
 
 Main libraries:
 
@@ -52,13 +54,6 @@ Dev tools:
 
 ---
 
-<!-- ## 🔑 API Key Setup
-
-This project requires an **OpenWeather API key**.  
-
-1. Go to [OpenWeather](https://openweathermap.org/api) and sign up.
-2. Create a `.env` file in the project root: -->
-
    ```bash
    VITE_OPENWEATHER_API_KEY=your_api_key_here
    ```
@@ -67,7 +62,7 @@ This project requires an **OpenWeather API key**.
 
 ---
 
-## ▶️ Running the Project
+## Running the Project
 
 Clone and install dependencies:
 
@@ -97,7 +92,7 @@ npm run preview
 
 ---
 
-## 📂 Project Structure
+## Project Structure
 
 ```
 src/
@@ -125,7 +120,7 @@ src/
 
 
 
-## 📝 License
+##  License
 
 MIT License © 2025 — Built for learning & demo purposes.
 
