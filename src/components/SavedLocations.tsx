@@ -25,7 +25,7 @@ const SavedLocations: React.FC<Props> = ({ saved, unit, onRemove }) => {
       )}
       {saved.map((h, idx) => (
         <div
-          key={idx}
+          key={idx} 
           className="saved-card"
           style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8 }}
         >

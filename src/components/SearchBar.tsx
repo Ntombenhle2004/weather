@@ -64,7 +64,7 @@ const SearchBar: React.FC<SearchBarProps> = ({ onSearch, onUseLocation, suggesti
           onClick={() => onUseLocation()}
           aria-label="Use my current location"
         >
-          use current location
+          current location
         </button>
       )}
     </form>
