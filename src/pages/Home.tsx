@@ -11,11 +11,14 @@ const round = (n: number) => Math.round(n * 10) / 10;
 type HistoryItem = {
   city: string;
   country?: string;
+  lat: number;
+  lon: number;
   tempC: number;
   wind?: number;
   humidity?: number | null;
   ts?: number;
 };
+
 
 const Home: React.FC = () => {
   const [notification, setNotification] = useState<{
@@ -154,6 +157,13 @@ const Home: React.FC = () => {
     saveSaved(filtered);
     setNotification({ message: `${item.city} removed`, type: "info" });
   };
+  const handleSelectSaved = async (item: HistoryItem) => {
+    await fetchWeatherByCoords(item.lat, item.lon, {
+      labelName: item.city,
+      labelCountry: item.country,
+    });
+  };
+
 
   const addCurrentToSaved = () => {
     if (!weather) return;
@@ -206,14 +216,17 @@ const Home: React.FC = () => {
         } catch {}
       }
 
-      const entry: HistoryItem = {
-        city: finalName,
-        country: finalCountry,
-        tempC: round(current.main.temp),
-        wind: windKmh ?? undefined,
-        humidity,
-        ts: Date.now(),
-      };
+   const entry: HistoryItem = {
+     city: finalName,
+     country: finalCountry,
+     lat: latitude,
+     lon: longitude,
+     tempC: round(current.main.temp),
+     wind: windKmh ?? undefined,
+     humidity,
+     ts: Date.now(),
+   };
+
 
       setWeather(entry);
       saveHistory(entry);
@@ -401,12 +414,16 @@ const Home: React.FC = () => {
   };
 
   return (
-    <div className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}>
+    <div
+      className={`app-root ${theme === "light" ? "light-theme" : "dark-theme"}`}
+    >
       <div className="app-frame">
         <div className="header">
           <div className="header-center">
             <div style={{ width: "100%" }}>
-              <div className="section-title" style={{ marginBottom: 8 }}>Weather application</div>
+              <div className="section-title" style={{ marginBottom: 8 }}>
+                Weather application
+              </div>
               <SearchBar
                 onSearch={handleSearch}
                 onUseLocation={handleUseLocation}
@@ -418,32 +435,68 @@ const Home: React.FC = () => {
           </div>
           <div className="controls">
             <ThemeToggle theme={theme} onToggle={toggleTheme} />
-            <button className={`toggle-pill ${unit === "celsius" ? "active" : ""}`} onClick={() => toggleUnit("celsius")}>°C</button>
-            <button className={`toggle-pill ${unit === "fahrenheit" ? "active" : ""}`} onClick={() => toggleUnit("fahrenheit")}>°F</button>
+            <button
+              className={`toggle-pill ${unit === "celsius" ? "active" : ""}`}
+              onClick={() => toggleUnit("celsius")}
+            >
+              °C
+            </button>
+            <button
+              className={`toggle-pill ${unit === "fahrenheit" ? "active" : ""}`}
+              onClick={() => toggleUnit("fahrenheit")}
+            >
+              °F
+            </button>
           </div>
         </div>
 
         {!isOnline && (
-          <div style={{ marginTop: 12, padding: 10, borderRadius: 8, background: "#fff3bf", color: "#92400e" }}>
+          <div
+            style={{
+              marginTop: 12,
+              padding: 10,
+              borderRadius: 8,
+              background: "#fff3bf",
+              color: "#92400e",
+            }}
+          >
             You are currently offline.
           </div>
         )}
 
         <div style={{ marginTop: 14 }}>
           <div className="main-card">
-            {loading && <div style={{ fontWeight: 600, marginBottom: 8 }}>Loading…</div>}
+            {loading && (
+              <div style={{ fontWeight: 600, marginBottom: 8 }}>Loading…</div>
+            )}
             {weather && (
-              <CurrentWeatherCard weather={weather} unit={unit} onSave={addCurrentToSaved} />
+              <CurrentWeatherCard
+                weather={weather}
+                unit={unit}
+                onSave={addCurrentToSaved}
+              />
             )}
           </div>
         </div>
 
         <div style={{ marginTop: 14 }} className="layout">
           <div className="main-card">
-            <div style={{ fontWeight: 700, marginTop: 0, marginBottom: 8 }}>Weather Forecast</div>
+            <div style={{ fontWeight: 700, marginTop: 0, marginBottom: 8 }}>
+              Weather Forecast
+            </div>
             <div className="tabs" style={{ marginTop: 6 }}>
-              <div className={`tab ${forecastType === "daily" ? "active" : ""}`} onClick={() => setForecastType("daily")}>Daily</div>
-              <div className={`tab ${forecastType === "hourly" ? "active" : ""}`} onClick={() => setForecastType("hourly")}>Hourly</div>
+              <div
+                className={`tab ${forecastType === "daily" ? "active" : ""}`}
+                onClick={() => setForecastType("daily")}
+              >
+                Daily
+              </div>
+              <div
+                className={`tab ${forecastType === "hourly" ? "active" : ""}`}
+                onClick={() => setForecastType("hourly")}
+              >
+                Hourly
+              </div>
             </div>
 
             {forecastType === "hourly" && hourly.length > 0 && (
@@ -460,7 +513,12 @@ const Home: React.FC = () => {
                   <tbody>
                     {hourly.slice(0, 24).map((h, i) => (
                       <tr key={i}>
-                        <td>{new Date(h.time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}</td>
+                        <td>
+                          {new Date(h.time).toLocaleTimeString([], {
+                            hour: "2-digit",
+                            minute: "2-digit",
+                          })}
+                        </td>
                         <td>{displayTemp(h.tempC)}</td>
                         <td>{h.humidity ?? "-"}</td>
                         <td>{h.wind ?? "-"}</td>
@@ -499,8 +557,17 @@ const Home: React.FC = () => {
             )}
           </div>
           <aside className="sidebar">
-            <SavedLocations saved={saved} unit={unit} onRemove={removeFromSaved} />
-            <WeatherAlerts message={notification ? notification.message : null} type={notification?.type} />
+            <SavedLocations
+              saved={saved}
+              unit={unit}
+              onRemove={removeFromSaved}
+              onSelect={handleSelectSaved}
+            />
+
+            <WeatherAlerts
+              message={notification ? notification.message : null}
+              type={notification?.type}
+            />
           </aside>
         </div>
       </div>
