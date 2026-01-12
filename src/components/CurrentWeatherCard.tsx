@@ -41,8 +41,8 @@ const CurrentWeatherCard: React.FC<Props> = ({ weather, unit, onSave }) => {
         </div>
         <p className="big-temp">{displayTemp(weather.tempC)}</p>
         <div className="kv">
-          <div>💧 {weather.humidity ?? "-"}%</div>
-          <div>🌬 {weather.wind ?? "-"} km/h</div>
+          <div> rain: {weather.humidity ?? "-"}%</div>
+          <div> wind: {weather.wind ?? "-"} km/h</div>
         </div>
       </div>
     </div>
