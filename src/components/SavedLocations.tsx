@@ -46,7 +46,7 @@ const SavedLocations: React.FC<Props> = ({ saved, unit, onRemove }) => {
               aria-label={`Remove ${h.city}`}
               title="Remove"
             >
-              Clear
+              Remove
             </button>
           </div>
         </div>
